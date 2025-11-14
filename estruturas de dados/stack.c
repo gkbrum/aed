@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdlib.h>
 #define MAX 1000
 
 typedef struct {
@@ -10,6 +11,7 @@ typedef struct {
 
 stack_t *resetStack(){
     stack_t *stack = ( stack_t * )malloc( sizeof( stack_t ) );
+    if (!stack) return NULL;
 
     stack->limit = MAX - 1;
     stack->top = -1;

@@ -51,7 +51,7 @@ void *AddPerson( void *pBuffer ){
         printf( "Falha ao alocar memoria." );
     }
 
-    //reinicializa ponteiros auxiliares após o realloc
+    //inicializa ponteiros auxiliares após o realloc
     int *numPersons = NUM_PERSONS;
     char *tempName = TEMP_NAME;
     char *tempEmail = TEMP_EMAIL;
@@ -143,7 +143,7 @@ void *DeletePerson( void *pBuffer ){
 }
 
 void ListAll( void *pBuffer ){
-    char *name = ( char *)pBuffer + OFFSET_DATA;
+    char *name = HEAD;
     
     for( *I = 0; *I < *NUM_PERSONS; (*I)++ ){
         PrintPerson( name );
