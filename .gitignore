@@ -7,11 +7,15 @@ label_to_nodes.json
 
 !json.hpp
 
+CMakeLists.txt
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 *.cmake
 
+*.user
+
+.qtcreator/
 build/
 cmake-build-*/
 
