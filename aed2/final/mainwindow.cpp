@@ -35,18 +35,16 @@ void MainWindow::carregarDados(){
     ui->txtResultado->setText("A carregar o mapa da cidade... Aguarde um momento.");
     QApplication::processEvents(); // Força a janela a desenhar este texto imediatamente!
 
-    std::string pathNodes = "C:/Users/Gabriel/Documents/codigos/_UFPEL/repo_aed/aed2/final/data/nodes.json";
-    std::string pathEdges = "C:/Users/Gabriel/Documents/codigos/_UFPEL/repo_aed/aed2/final/data/edges.json";
-    std::string pathNomes = "C:/Users/Gabriel/Documents/codigos/_UFPEL/repo_aed/aed2/final/data/label_to_nodes.json";
-
-    //std::string pathNodes = "data/nodes.json";
-    //std::string pathEdges = "data/edges.json";
-    //std::string pathNomes = "data/label_to_nodes.json";
+    std::string pathNodes = "data/nodes.json";
+    std::string pathEdges = "data/edges.json";
+    std::string pathNomes = "data/label_to_nodes.json";
 
     cidade->carregarArestas(pathEdges);
     cidade->carregarNos(pathNodes);
-
     autocomplete->carregarJson(pathNomes);
+
+    qDebug() << "A desenhar o mapa...";
+    desenharMapaBase();
 
     ui->txtResultado->setText("Mapa carregado com sucesso! Pode pesquisar.");
 
@@ -62,7 +60,7 @@ void MainWindow::carregarDados(){
 void MainWindow::on_txtOrigem_textChanged(const QString &arg1)
 {
     ui->listOrigem->clear(); // limpa a lista
-    std::string busca = arg1.toStdString();
+    std::string busca = arg1.toLower().toStdString();
 
     qDebug() << "A procurar por:" << arg1;
 
@@ -104,7 +102,7 @@ void MainWindow::on_listOrigem_itemClicked(QListWidgetItem *item)
 void MainWindow::on_txtDestino_textChanged(const QString &arg1)
 {
     ui->listDestino->clear();
-    std::string busca = arg1.toStdString();
+    std::string busca = arg1.toLower().toStdString();
 
     if (busca.length() < 3) return;
 
@@ -158,4 +156,38 @@ void MainWindow::on_btnCalcular_clicked()
     // Exibe o resultado da distância na etiqueta
     double distanciaMetros = resultado.dist[indiceDestino];
     ui->txtResultado->setText("Distância: " + QString::number(distanciaMetros) + " metros.");
+}
+
+
+
+// ==========================================
+// FUNÇÂO DE DESENHAR O MAPA
+// ==========================================
+void MainWindow::desenharMapaBase()
+{
+    cena->clear(); // Limpa a tela
+
+    // Define uma caneta cinzenta e fina para o mapa de fundo
+    QPen canetaFundo(QColor(200, 200, 200));
+    canetaFundo.setWidth(0); // 0 significa que a linha terá sempre 1 pixel de espessura, mesmo com zoom
+
+    // Fator de ampliação (escala) para converter as coordenadas GPS em pixels
+    double escala = 100000.0;
+
+    // Vai buscar todas as ruas ao grafo
+    auto linhas = cidade->obterTodasAsArestasParaDesenho();
+
+    for (const auto& linha : linhas) {
+        // Multiplica para afastar os pontos e inverte o Y (lat) pois no Qt o Y cresce para baixo
+        double x1 = linha.first.lon * escala;
+        double y1 = -linha.first.lat * escala;
+        double x2 = linha.second.lon * escala;
+        double y2 = -linha.second.lat * escala;
+
+        // Adiciona a linha à cena
+        cena->addLine(x1, y1, x2, y2, canetaFundo);
+    }
+
+    // A MÁGICA: Pede ao Qt para fazer zoom automático e centralizar o mapa inteiro na janela!
+    ui->mapView->fitInView(cena->itemsBoundingRect(), Qt::KeepAspectRatio);
 }

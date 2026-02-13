@@ -293,8 +293,23 @@ public:
         
             nodeList[indice] = {lat, lon};
         }
-    } 
+    }
 
+    //=================================
+    // FUNÇÃO PARA A INTERFACE
+    //=================================
+
+    std::vector<std::pair<noGrafo, noGrafo>> obterTodasAsArestasParaDesenho() {
+        std::vector<std::pair<noGrafo, noGrafo>> linhas;
+
+        // Percorre todos os vértices e as suas ligações
+        for (size_t u = 0; u < adjList.size(); ++u) {
+            for (const auto& aresta : adjList[u]) {
+                linhas.push_back({nodeList[u], nodeList[aresta.destino]});
+            }
+        }
+        return linhas;
+    }
 
 
     //=================================

@@ -49,6 +49,7 @@ private:
     void carregarDados();
     void configurarInterface();
     void carregarTrie(const std::string &caminho);
+    void desenharMapaBase();
 
 };
 #endif // MAINWINDOW_H
