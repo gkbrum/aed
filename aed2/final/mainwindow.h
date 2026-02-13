@@ -23,6 +23,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private slots:
     void on_txtOrigem_textChanged(const QString &arg1);
     void on_listOrigem_itemClicked(QListWidgetItem *item);
@@ -44,12 +47,20 @@ private:
     long long idOrigem = -1;
     long long idDestino = -1;
 
-
     //metodos
     void carregarDados();
     void configurarInterface();
     void carregarTrie(const std::string &caminho);
     void desenharMapaBase();
+
+    // elem. graficos para desenhar camino
+    QGraphicsEllipseItem *marcadorOrigem = nullptr;
+    QGraphicsEllipseItem *marcadorDestino = nullptr;
+    std::vector<QGraphicsLineItem*> linhasRotaAtiva;
+
+    // funções de desenhar caminho
+    void desenharMarcador(long long id, bool isOrigem);
+    void limparRota();
 
 };
 #endif // MAINWINDOW_H

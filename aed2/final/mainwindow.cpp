@@ -2,6 +2,10 @@
 #include "ui_mainwindow.h"
 #include <limits>
 #include <QMessageBox>
+#include <QTimer>
+#include <QWheelEvent>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsLineItem>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -14,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     cena = new QGraphicsScene(this);
     ui->mapView->setScene(cena);
+
+    ui->mapView->viewport()->installEventFilter(this);
 
 
     carregarDados();
@@ -90,6 +96,7 @@ void MainWindow::on_listOrigem_itemClicked(QListWidgetItem *item)
     if (!ids.empty()) {
         idOrigem = ids[0]; // guarda o primeiro ID encontrado
         ui->txtResultado->setText("Origem definida.");
+        desenharMarcador(idOrigem, true);
     }
 }
 
@@ -122,6 +129,7 @@ void MainWindow::on_listDestino_itemClicked(QListWidgetItem *item)
     if (!ids.empty()) {
         idDestino = ids[0];
         ui->txtResultado->setText("Destino definido. Pode calcular.");
+        desenharMarcador(idDestino, false);
     }
 }
 
@@ -156,6 +164,27 @@ void MainWindow::on_btnCalcular_clicked()
     // Exibe o resultado da distância na etiqueta
     double distanciaMetros = resultado.dist[indiceDestino];
     ui->txtResultado->setText("Distância: " + QString::number(distanciaMetros) + " metros.");
+
+    // DESENHAR A ROTA
+    std::vector<noGrafo> caminho = cidade->reconstruirCaminho(idOrigem, idDestino, resultado.pai);
+
+    QPen canetaRota(Qt::red);
+    canetaRota.setCosmetic(true); // A linha tem espessura em pixels, não "engrossa" com o zoom
+    canetaRota.setWidth(4);       // Linha com 4 pixels de largura para se destacar muito bem
+
+    double escala = 100000.0;
+
+    // Liga os pontos de trás para a frente com linhas vermelhas
+    for (size_t i = 0; i < caminho.size() - 1; ++i) {
+        double x1 = caminho[i].lon * escala;
+        double y1 = -caminho[i].lat * escala;
+        double x2 = caminho[i+1].lon * escala;
+        double y2 = -caminho[i+1].lat * escala;
+
+        QGraphicsLineItem *linha = cena->addLine(x1, y1, x2, y2, canetaRota);
+        linha->setZValue(1); // Fica por cima do mapa cinza, mas por baixo das bolinhas (Z=2)
+        linhasRotaAtiva.push_back(linha);
+    }
 }
 
 
@@ -188,6 +217,74 @@ void MainWindow::desenharMapaBase()
         cena->addLine(x1, y1, x2, y2, canetaFundo);
     }
 
-    // A MÁGICA: Pede ao Qt para fazer zoom automático e centralizar o mapa inteiro na janela!
-    ui->mapView->fitInView(cena->itemsBoundingRect(), Qt::KeepAspectRatio);
+    // 1. Permite que o utilizador arraste o mapa clicando e puxando com o rato
+    ui->mapView->setDragMode(QGraphicsView::ScrollHandDrag);
+
+    // 2. Atrasa o cálculo do zoom em 100 milissegundos para garantir que a janela já abriu
+    QTimer::singleShot(100, this, [this]() {
+        // Agora sim, com a janela aberta, ele ajusta perfeitamente
+        ui->mapView->fitInView(cena->itemsBoundingRect(), Qt::KeepAspectRatio);
+    });
+}
+
+//função que cuida o scroll do mouse para dar zoom no mapa
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    // Verifica se o evento aconteceu dentro do mapView e se foi um rodar do rato
+    if (watched == ui->mapView->viewport() && event->type() == QEvent::Wheel) {
+
+        QWheelEvent *wheelEvent = static_cast<QWheelEvent*>(event);
+
+        // Se a roda foi para a frente (valor positivo), fazemos Zoom In (15% maior)
+        if (wheelEvent->angleDelta().y() > 0) {
+            ui->mapView->scale(1.15, 1.15);
+        }
+        // Se a roda foi para trás, fazemos Zoom Out (15% menor)
+        else {
+            ui->mapView->scale(0.85, 0.85);
+        }
+
+        return true; // Avisa o Qt que já tratámos deste evento
+    }
+
+    // Para todos os outros eventos (cliques, teclado), deixa o Qt seguir o padrão normal
+    return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::desenharMarcador(long long id, bool isOrigem) {
+    noGrafo coord = cidade->obterCoordenada(id);
+    if (coord.lat == 0 && coord.lon == 0) return; // Segurança
+
+    double escala = 100000.0;
+    double x = coord.lon * escala;
+    double y = -coord.lat * escala;
+
+    QColor cor = isOrigem ? Qt::green : Qt::blue;
+
+    // Cria um círculo de 12x12 pixels centrado na origem (-6, -6)
+    QGraphicsEllipseItem* ponto = cena->addEllipse(-6, -6, 12, 12, QPen(Qt::black), QBrush(cor));
+    ponto->setPos(x, y); // Coloca nas coordenadas do GPS
+
+    // O TRUQUE MÁGICO: Este círculo ignora o Zoom! Fica sempre com 12px no ecrã.
+    ponto->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    ponto->setZValue(2); // Garante que o ponto fica por cima de todas as ruas
+
+    if (isOrigem) {
+        if (marcadorOrigem) cena->removeItem(marcadorOrigem);
+        marcadorOrigem = ponto;
+        limparRota(); // Se mudou a origem, limpa a rota anterior
+    } else {
+        if (marcadorDestino) cena->removeItem(marcadorDestino);
+        marcadorDestino = ponto;
+        limparRota(); // Se mudou o destino, limpa a rota anterior
+    }
+}
+
+void MainWindow::limparRota() {
+    // Apaga as linhas vermelhas velhas da tela e da memória
+    for (auto linha : linhasRotaAtiva) {
+        cena->removeItem(linha);
+        delete linha;
+    }
+    linhasRotaAtiva.clear();
 }

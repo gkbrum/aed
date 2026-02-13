@@ -184,41 +184,34 @@ public:
     }
 
 
-    std::vector<int> reconstruirCaminho(long long origem_id, long long destino_id, const std::vector<int> &pai)
+    //função que reconstroi o caminho para ser desenhado no mapa
+    std::vector<noGrafo> reconstruirCaminho(long long origem_id, long long destino_id, const std::vector<int> &pai)
     {
-
         int origem = obterIndice(origem_id);
         int destino = obterIndice(destino_id);
 
-        std::vector<int> caminho;
+        std::vector<int> caminho_indices;
 
         if (origem == -1 || destino == -1)
-            return caminho;
+            return {}; //
 
         for (int v = destino; v != -1; v = pai[v])
-            caminho.push_back(v);
+            caminho_indices.push_back(v);
 
-        std::reverse(caminho.begin(), caminho.end());
+        std::reverse(caminho_indices.begin(), caminho_indices.end());
 
-        if (!caminho.empty() && caminho.front() == origem)
-            return caminho;
 
-        return {};
+        if (caminho_indices.empty() || caminho_indices.front() != origem)
+            return {};
+
+
+        std::vector<noGrafo> caminho_final;
+        for (int idx : caminho_indices) {
+            caminho_final.push_back(nodeList[idx]);
+        }
+
+        return caminho_final;
     }
-
-
-    std::vector<long long> reconstruirCaminhoIDs(long long origem_id, long long destino_id, const std::vector<int> &pai)
-    {
-        auto caminhoIndice = reconstruirCaminho(origem_id, destino_id, pai);
-
-        std::vector<long long> caminhoIDs;
-
-        for (int idx : caminhoIndice)
-            caminhoIDs.push_back(obterIdOSM(idx));
-
-        return caminhoIDs;
-    }
-
 
 
     //=================================

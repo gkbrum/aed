@@ -1,10 +1,5 @@
 .vscode/
 
-edges.json
-nodes.json
-nodes_to_label.json
-label_to_nodes.json
-
 !json.hpp
 
 CMakeLists.txt
