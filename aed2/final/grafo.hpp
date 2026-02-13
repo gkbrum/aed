@@ -3,9 +3,8 @@
 
 #include <iostream>
 #include <vector>
-#include <list>
 #include <queue>
-#include <climits>
+#include <limits>
 #include <fstream>
 #include <unordered_map>
 #include "json.hpp"
@@ -149,7 +148,7 @@ public:
         int origem = obterIndice(id_origem);
 
         resultadoDijkstra res;
-        res.dist.assign(proximo_indice, LLONG_MAX);
+        res.dist.assign(proximo_indice, std::numeric_limits<double>::infinity());
         res.pai.assign(proximo_indice, -1);
 
         if (origem == -1)

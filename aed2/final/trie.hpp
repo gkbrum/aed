@@ -4,6 +4,10 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 class NoTrie
 {
@@ -21,7 +25,6 @@ public:
         }
     }
 
-    // Destrutor recursivo para liberar memória automaticamente
     ~NoTrie()
     {
         for (int i = 0; i < 256; i++)
@@ -86,6 +89,37 @@ public:
 
         return (atual->ehFim) ? atual->ids_nodo : std::vector<long long>{};
     }
+
+    void carregarJson(const std::string &caminhoArquivo)
+    {
+        std::ifstream arquivo(caminhoArquivo);
+        if (!arquivo.is_open()) {
+            std::cerr << "Erro ao abrir arquivo da Trie: " << caminhoArquivo << std::endl;
+            return;
+        }
+
+        json dados;
+        try {
+            arquivo >> dados;
+        } catch (const std::exception &e) {
+            std::cerr << "JSON Invalido na Trie: " << e.what() << std::endl;
+            return;
+        }
+
+        for (auto it = dados.begin(); it != dados.end(); ++it) {
+            std::string nomeRua = it.key();
+            auto valores = it.value();
+
+            if (valores.is_array()) {
+                for (auto& id_json : valores) {
+                    this->inserir(nomeRua, id_json.get<long long>());
+                }
+            } else if (valores.is_number()) {
+                this->inserir(nomeRua, valores.get<long long>());
+            }
+        }
+    }
+
 
     // Verifica se existe algum nome de rua que começa com o prefixo
     bool comecaCom(std::string prefixo)
