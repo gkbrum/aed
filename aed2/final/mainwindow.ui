@@ -40,14 +40,14 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Origem</string>
+        <string/>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QLineEdit" name="txtDestino">
        <property name="text">
-        <string>Destino</string>
+        <string/>
        </property>
       </widget>
      </item>

@@ -13,6 +13,28 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    this->setStyleSheet(
+        // Caixa de texto: Fundo branco, letra preta
+        "QLineEdit { border: 1px solid #ccc; border-radius: 5px; padding: 5px; font-size: 14px; background-color: white; color: black; }"
+
+        // Lista de sugestões: Fundo escuro elegante, letra branca
+        "QListWidget { border: 1px solid #444; border-radius: 5px; background-color: #2b2b2b; color: white; }"
+        "QListWidget::item { padding: 5px; }"
+
+        // Item selecionado (Hover): Fundo azul, letra branca
+        "QListWidget::item:hover { background-color: #007bff; color: white; }"
+
+        // Botão
+        "QPushButton { background-color: #007bff; color: white; border-radius: 5px; padding: 8px; font-weight: bold; }"
+        "QPushButton:hover { background-color: #0056b3; }"
+        );
+
+    ui->txtOrigem->setPlaceholderText("Pesquise a rua de origem...");
+    ui->txtDestino->setPlaceholderText("Pesquise a rua de destino...");
+
+    ui->listOrigem->hide();
+    ui->listDestino->hide();
+
     cidade = new Grafo();
     autocomplete = new Trie();
 
@@ -71,15 +93,24 @@ void MainWindow::on_txtOrigem_textChanged(const QString &arg1)
     qDebug() << "A procurar por:" << arg1;
 
     // só procura na trie depois de 3 char digitados
-    if (busca.length() < 3) return;
+    if (busca.length() < 3){
+        ui->listOrigem->hide();
+        return;
+    }
 
     std::vector<std::string> sugestoes = autocomplete->sugerir(busca);
 
     qDebug() << "Sugestões encontradas na Trie:" << sugestoes.size();
 
     // add as sugestoes a lista da ui
-    for (const auto &s : sugestoes) {
-        ui->listOrigem->addItem(QString::fromStdString(s));
+    if (sugestoes.empty()) {
+        ui->listOrigem->hide();
+    } else {
+        ui->listOrigem->setMinimumHeight(120);
+        ui->listOrigem->show();
+        for (const auto &s : sugestoes) {
+            ui->listOrigem->addItem(QString::fromStdString(s));
+        }
     }
 }
 
@@ -90,6 +121,8 @@ void MainWindow::on_listOrigem_itemClicked(QListWidgetItem *item)
 
     // atualiza a cx de texto com o nome que o usuario clicou
     ui->txtOrigem->setText(QString::fromStdString(rua));
+
+    ui->listOrigem->hide();
 
     // busca o ID da rua na trie
     auto ids = autocomplete->buscarID(rua);
@@ -111,11 +144,21 @@ void MainWindow::on_txtDestino_textChanged(const QString &arg1)
     ui->listDestino->clear();
     std::string busca = arg1.toLower().toStdString();
 
-    if (busca.length() < 3) return;
+    if (busca.length() < 3){
+        ui->listDestino->hide();
+        return;
+    }
 
     std::vector<std::string> sugestoes = autocomplete->sugerir(busca);
-    for (const auto &s : sugestoes) {
-        ui->listDestino->addItem(QString::fromStdString(s));
+
+    if (sugestoes.empty()) {
+        ui->listDestino->hide();
+    } else {
+        ui->listDestino->setMinimumHeight(120);
+        ui->listDestino->show();
+        for (const auto &s : sugestoes) {
+            ui->listDestino->addItem(QString::fromStdString(s));
+        }
     }
 }
 
@@ -124,6 +167,8 @@ void MainWindow::on_listDestino_itemClicked(QListWidgetItem *item)
 {
     std::string rua = item->text().toStdString();
     ui->txtDestino->setText(QString::fromStdString(rua));
+
+    ui->listDestino->hide();
 
     auto ids = autocomplete->buscarID(rua);
     if (!ids.empty()) {
@@ -163,7 +208,15 @@ void MainWindow::on_btnCalcular_clicked()
 
     // Exibe o resultado da distância na etiqueta
     double distanciaMetros = resultado.dist[indiceDestino];
-    ui->txtResultado->setText("Distância: " + QString::number(distanciaMetros) + " metros.");
+    QString textoDistancia;
+
+    if (distanciaMetros >= 1000.0) {
+        textoDistancia = QString::number(distanciaMetros / 1000.0, 'f', 2) + " km";
+    } else {
+        textoDistancia = QString::number(std::round(distanciaMetros)) + " metros";
+    }
+
+    ui->txtResultado->setText("Distância: " + textoDistancia);
 
     // DESENHAR A ROTA
     std::vector<noGrafo> caminho = cidade->reconstruirCaminho(idOrigem, idDestino, resultado.pai);
@@ -184,6 +237,23 @@ void MainWindow::on_btnCalcular_clicked()
         QGraphicsLineItem *linha = cena->addLine(x1, y1, x2, y2, canetaRota);
         linha->setZValue(1); // Fica por cima do mapa cinza, mas por baixo das bolinhas (Z=2)
         linhasRotaAtiva.push_back(linha);
+    }
+
+    if (!linhasRotaAtiva.empty()) {
+        QRectF areaDaRota = linhasRotaAtiva[0]->boundingRect();
+
+        // Une as áreas de todas as linhas da rota para descobrir o tamanho total
+        for (QGraphicsLineItem* linha : linhasRotaAtiva) {
+            areaDaRota = areaDaRota.united(linha->boundingRect());
+        }
+
+        // Dá uma margem de "respiro" de 10% à volta da rota para não colar nas bordas
+        double margemX = areaDaRota.width() * 0.1;
+        double margemY = areaDaRota.height() * 0.1;
+        areaDaRota.adjust(-margemX, -margemY, margemX, margemY);
+
+        // Anima/Foca a câmara nessa área
+        ui->mapView->fitInView(areaDaRota, Qt::KeepAspectRatio);
     }
 }
 
